@@ -22,11 +22,7 @@ function getAllRequests () {
     const openQuestions = ids.filter(id => !result[id].resolved)
     openQuestions.forEach((id, index) => {
       const item = result[id]
-      if ((item.name === username) && (queueNum === 0)) {
-        queueNum = index + 1
-        queueSpot.textContent = queueNum
-        window.localStorage.setItem('place', queueNum)
-      }
+
       queue.appendChild(createNewListItem(id, index + 1, item.name, item.question))
       const answeredButton = document.getElementById(`${id}-answered`)
       const editButton = document.getElementById(`${id}-edit`)
@@ -54,6 +50,13 @@ function getAllRequests () {
           questionText.textContent = input.value
         }
       })
+      if ((item.name === username) && (queueNum === 0)) {
+        queueNum = index + 1
+        queueSpot.textContent = queueNum
+        window.localStorage.setItem('place', queueNum)
+        answeredButton.classList.toggle('disabled')
+        editButton.classList.toggle('disabled')
+      }
 
       answeredButton.addEventListener('click', e => {
         if (answeredButton.textContent === 'Answered') {
@@ -91,8 +94,6 @@ function getAllRequests () {
           answeredButton.className = 'btn item-button btn-success btn-sm my-2'
           document.getElementById(`${id}-form`).remove()
         }
-
-        // display the answer box
       })
     })
   })
@@ -107,15 +108,15 @@ function createNewListItem (id, index, name, question) {
       <div class="col-md-1 d-flex justify-content-center align-items-center">
         <p class="element queueNum">${index}</p>
       </div>
-      <div class="col-md-3 d-flex align-items-center">
+      <div class="col-md-2 d-flex align-items-center">
         <p class="element name">${name}</p>
       </div>
-      <div class="col-md-6 d-flex align-items-center">
+      <div class="col-md-7 d-flex align-items-center">
         <p class="element topic" id="${id}-question">${question}</p>
       </div>
       <div class="col-md-2 d-flex flex-column align-items-center justify-content-center">
-        <button type="button" id="${id}-edit" class="btn item-button btn-primary btn-sm mt-2">Edit</button>
-        <button type="button" id="${id}-answered" class="btn item-button btn-success btn-sm my-2">Answered</button>
+        <button type="button" id="${id}-edit" class="disabled btn item-button btn-primary btn-sm mt-2">Edit</button>
+        <button type="button" id="${id}-answered" class="disabled btn item-button btn-success btn-sm my-2">Answered</button>
       </div>
     </div>
     `
@@ -132,10 +133,10 @@ function createNewArchiveListItem (id, index, name, question, answer, helper) {
       <div class="col-md-1 d-flex justify-content-center align-items-center">
         <p class="element queueNum">${index}</p>
       </div>
-      <div class="col-md-3 d-flex align-items-center">
+      <div class="col-md-2 d-flex align-items-center">
         <p class="element name">${name}</p>
       </div>
-      <div class="col-md-6 d-flex align-items-center">
+      <div class="col-md-7 d-flex align-items-center">
         <p class="element topic">${question}</p>
       </div>
       <div class="col-md-2 d-flex flex-column align-items-center justify-content-center">
@@ -146,23 +147,8 @@ function createNewArchiveListItem (id, index, name, question, answer, helper) {
   return newListItem
 }
 
-// function writeUserData(userId, name, email) {
-//   database.ref('users/' + userId).set({
-//     username: name,
-//     email: email
-//   })
-// }
-
-// function writeRequestData (requestId, name, question) {
-//   database.ref('requests/' + requestId).set({
-//     _id: requestId,
-//     name: name,
-//     question: question,
-//     resolved: false
-//   })
-// }
-
 function submitMessage (messageContent, userName) {
+  const submitButton = document.getElementById('add-request')
   let uid = Date.now() + userName
   database.ref('requests/' + uid).set({
     _id: uid,
@@ -171,7 +157,8 @@ function submitMessage (messageContent, userName) {
     resolved: false
   }).then(function () {
     // popup the success
-
+    submitButton.classList.toggle('disabled')
+    window.localStorage.setItem('canPost', false)
   }).catch(function (error) {
     console.error(error)
   })
@@ -191,6 +178,8 @@ function markAsResolved (id, resolutionMessage, helper) {
         'helper': helper,
         'id': id
       })
+      window.localStorage.setItem('canPost', true)
+      document.getElementById('add-request').classList.toggle('disabled')
     // }).then(function () {
     //   // database.ref('requests/' + id).set(null)
     })
@@ -268,6 +257,7 @@ if (window.route === 'index') {
     window.location.href = 'askify.html'
     window.localStorage.setItem('repeatUser', 'yes')
     window.localStorage.setItem('user', JSON.stringify(userInfo))
+    window.localStorage.setItem('canPost', true)
     window.location.href = 'askify.html'
   })
 } else if (window.route === 'askify') {
@@ -277,6 +267,9 @@ if (window.route === 'index') {
   const messageTextField = document.getElementById('message-text')
   const greetingDiv = document.getElementById('greeting')
   greetingDiv.textContent = `Hello, ${userInfo.fname}!`
+  if (window.localStorage.getItem('canPost') === 'false') {
+    document.getElementById('add-request').classList.toggle('disabled')
+  }
 
   submitButton.addEventListener('click', e => {
     let messageText = messageTextField.value
