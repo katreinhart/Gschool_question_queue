@@ -5,6 +5,8 @@ const config = require('./config').config
 const firebase = require('firebase')
 // const firebaseui = require('firebaseui')
 
+const templates = require('./templates')
+
 let username
 firebase.initializeApp(config)
 // let user = firebase.auth().currentUser
@@ -68,15 +70,7 @@ function getAllRequests () {
           const form = document.createElement('FORM')
           form.id = `${id}-form`
           form.className = 'form-group d-flex row my-2'
-          form.innerHTML = `<div class="col-md-8">
-              <textarea class="form-control" id="answer-${id}" rows="3" placeholder="Tell us what the solution was"></textarea>
-            </div>
-            <div class="col-md-2">
-              <input type="text" class="form-control" id="helper-${id}" aria-describedby="who helped you" placeholder="who helped you?">
-            </div>
-            <div class="col-md-2 d-flex flex-column align-items-center">
-              <button type="button" id="archive-${id}" class="btn item-button btn-secondary btn-sm">Archive</button>
-            </div>`
+          form.innerHTML = templates.form(id)
           li.appendChild(form)
           document.getElementById(`archive-${id}`).addEventListener('click', e => {
             const helperForm = document.getElementById(`helper-${id}`)
@@ -103,47 +97,15 @@ function createNewListItem (id, index, name, question) {
   const newListItem = document.createElement('LI')
   newListItem.id = id
   // newListItem.className = 'row entry py-2'
-  newListItem.innerHTML = `
-    <div class="d-flex row">
-      <div class="col-md-1 d-flex justify-content-center align-items-center">
-        <p class="element queueNum">${index}</p>
-      </div>
-      <div class="col-md-2 d-flex align-items-center">
-        <p class="element name">${name}</p>
-      </div>
-      <div class="col-md-7 d-flex align-items-center">
-        <p class="element topic" id="${id}-question">${question}</p>
-      </div>
-      <div class="col-md-2 d-flex flex-column align-items-center justify-content-center">
-        <button type="button" id="${id}-edit" class="disabled btn item-button btn-primary btn-sm mt-2">Edit</button>
-        <button type="button" id="${id}-answered" class="disabled btn item-button btn-success btn-sm my-2">Answered</button>
-      </div>
-    </div>
-    `
-
+  newListItem.innerHTML = templates.newListItem(id, index, name, question)
   return newListItem
 }
 
-function createNewArchiveListItem (id, index, name, question, answer, helper) {
+function createNewArchiveListItem (id, index, name, question) {
   const newListItem = document.createElement('LI')
   newListItem.id = id
   // newListItem.className = 'row entry py-2'
-  newListItem.innerHTML = `
-    <div class="d-flex row">
-      <div class="col-md-1 d-flex justify-content-center align-items-center">
-        <p class="element queueNum">${index}</p>
-      </div>
-      <div class="col-md-2 d-flex align-items-center">
-        <p class="element name">${name}</p>
-      </div>
-      <div class="col-md-7 d-flex align-items-center">
-        <p class="element topic">${question}</p>
-      </div>
-      <div class="col-md-2 d-flex flex-column align-items-center justify-content-center">
-        <button type="button" id="${id}-details" class="btn item-button btn-success btn-sm my-2">Details</button>
-      </div>
-    </div>
-    `
+  newListItem.innerHTML = templates.newArchiveListItem(id, index, name, question)
   return newListItem
 }
 
@@ -197,40 +159,31 @@ function displayArchivedQuestions () {
     const archive = document.getElementById('archive')
     archive.innerHTML = ''
     messageIds.sort(function (a, b) {
-      return a < b
+      return (a < b)
     })
     messageIds.forEach((id, index) => {
       const item = result[id]
-      let messageText = item.question
-      let helper = item.helper
-
-      archive.appendChild(createNewArchiveListItem(id, index + 1, item.name, item.question))
+      const newItem = createNewArchiveListItem(id, index + 1, item.name, item.question)
+      archive.appendChild(newItem)
       const detailsButton = document.getElementById(`${id}-details`)
-      detailsButton.addEventListener('click', e => {
-        if (detailsButton.textContent === 'Details') {
-          detailsButton.textContent = 'Collapse'
-          const detailsDiv = document.createElement('DIV')
-          detailsDiv.id = `${id}-detail-div`
-          detailsDiv.className = 'form-group d-flex row my-2'
-          detailsDiv.innerHTML = `
-            <div class="col-md-1"></div>
-            <div class="col-md-9">
-              <p class="element answer text-secondary">${messageText}</p>
-            </div>
-            <div class="col-md-2">
-              <p class="element helper text-center text-secondary">${helper}</p>
-            </div>
-          `
-          const li = e.target.closest('LI')
-          li.appendChild(detailsDiv)
-          // console.log('button clicked')
-        } else {
-          detailsButton.textContent = 'Details'
-          document.getElementById(`${id}-detail-div`).remove()
-        }
-      })
+      detailsButton.addEventListener('click', () => { displayDetails(id, detailsButton) })
     })
   })
+}
+
+function displayDetails (id, detailsButton) {
+  if (detailsButton.textContent === 'Details') {
+    detailsButton.textContent = 'Collapse'
+    const detailsDiv = document.createElement('DIV')
+    detailsDiv.id = `${id}-detail-div`
+    detailsDiv.className = 'form-group d-flex row my-2'
+    detailsDiv.innerHTML = templates.detailsDiv()
+    const li = detailsButton.closest('LI')
+    li.appendChild(detailsDiv)
+  } else {
+    detailsButton.textContent = 'Details'
+    document.getElementById(`${id}-detail-div`).remove()
+  }
 }
 
 function detect () {
