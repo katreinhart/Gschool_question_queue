@@ -1,15 +1,12 @@
 // const css = require('../styles/app.scss') // eslint-disable-line
 const config = require('./config').config
-// const uiconfig = require('./config').uiconfig
-// console.log(uiconfig)
 const firebase = require('firebase')
-// const firebaseui = require('firebaseui')
 
 const templates = require('./templates')
 
 let username
 firebase.initializeApp(config)
-// let user = firebase.auth().currentUser
+
 let database = firebase.database()
 
 function getAllRequests () {
@@ -17,80 +14,95 @@ function getAllRequests () {
     let result = snapshot.val()
     const ids = Object.keys(result)
     const queue = document.getElementById('queue')
-    const queueSpot = document.getElementById('queueSpot')
+
     let queueNum = 0
 
     queue.innerHTML = ''
     const openQuestions = ids.filter(id => !result[id].resolved)
     openQuestions.forEach((id, index) => {
-      const item = result[id]
-
-      queue.appendChild(createNewListItem(id, index + 1, item.name, item.question))
-      const answeredButton = document.getElementById(`${id}-answered`)
-      const editButton = document.getElementById(`${id}-edit`)
-      const questionText = document.getElementById(`${id}-question`)
-      editButton.addEventListener('click', e => {
-        if (editButton.textContent === 'Edit') {
-          editButton.textContent = 'Save'
-          const input = document.createElement('INPUT')
-          input.style.width = '100%'
-          input.id = `${id}-edit-input`
-
-          input.value = item.question
-          questionText.textContent = ''
-          questionText.appendChild(input)
-
-          answeredButton.classList.toggle('disabled')
-        } else {
-          editButton.textContent = 'Edit'
-          answeredButton.classList.toggle('disabled')
-          const input = document.getElementById(`${id}-edit-input`)
-
-          database.ref('requests/' + id).update({
-            question: input.value
-          })
-          questionText.textContent = input.value
-        }
-      })
-      if ((item.name === username) && (queueNum === 0)) {
-        queueNum = index + 1
-        queueSpot.textContent = queueNum
-        window.localStorage.setItem('place', queueNum)
-        answeredButton.classList.toggle('disabled')
-        editButton.classList.toggle('disabled')
-      }
-
-      answeredButton.addEventListener('click', e => {
-        if (answeredButton.textContent === 'Answered') {
-          // do stuff
-          answeredButton.textContent = 'Cancel'
-          answeredButton.className = 'btn item-button btn-warning btn-sm my-2'
-
-          const li = e.target.closest('LI')
-          const form = document.createElement('FORM')
-          form.id = `${id}-form`
-          form.className = 'form-group d-flex row my-2'
-          form.innerHTML = templates.form(id)
-          li.appendChild(form)
-          document.getElementById(`archive-${id}`).addEventListener('click', e => {
-            const helperForm = document.getElementById(`helper-${id}`)
-            const solutionForm = document.getElementById(`answer-${id}`)
-            if ((solutionForm.value !== '') && (helperForm.value !== '')) {
-              markAsResolved(id, solutionForm.value, helperForm.value)
-            } else if (solutionForm.value === '') {
-              window.alert('Please let us know what the solution was.')
-            } else if (helperForm.value === '') {
-              window.alert('Please let us know who helped you.')
-            }
-          })
-        } else {
-          answeredButton.textContent = 'Answered'
-          answeredButton.className = 'btn item-button btn-success btn-sm my-2'
-          document.getElementById(`${id}-form`).remove()
-        }
-      })
+      displayQuestion(result, id, index, queue, queueNum)
     })
   })
+}
+
+function displayQuestion (result, id, index, queue, queueNum) {
+  const queueSpot = document.getElementById('queueSpot')
+  const item = result[id]
+
+  queue.appendChild(createNewListItem(id, index + 1, item.name, item.question))
+  const answeredButton = document.getElementById(`${id}-answered`)
+  const editButton = document.getElementById(`${id}-edit`)
+  const questionText = document.getElementById(`${id}-question`)
+  editButton.addEventListener('click', e => {
+    handleEditButtonClick(id, item, questionText, editButton, answeredButton)
+  })
+  if ((item.name === username) && (queueNum === 0)) {
+    queueNum = index + 1
+    queueSpot.textContent = queueNum
+    window.localStorage.setItem('place', queueNum)
+    answeredButton.classList.toggle('disabled')
+    editButton.classList.toggle('disabled')
+  }
+
+  answeredButton.addEventListener('click', e => {
+    handleAnswerButtonClick(id, answeredButton)
+  })
+}
+
+function handleEditButtonClick (id, item, questionText, editButton, answeredButton) {
+  if (editButton.textContent === 'Edit') {
+    editButton.textContent = 'Save'
+    const input = document.createElement('INPUT')
+    input.style.width = '100%'
+    input.id = `${id}-edit-input`
+    input.value = item.question
+    questionText.textContent = ''
+    questionText.appendChild(input)
+    answeredButton.classList.toggle('disabled')
+  } else {
+    editButton.textContent = 'Edit'
+    answeredButton.classList.toggle('disabled')
+    // where is this input dom element???
+    const input = document.getElementById(`${id}-edit-input`)
+    // database.ref('requests/' + id).update({
+    //   question: input.value
+    // })
+    questionText.textContent = input.value
+  }
+}
+
+function handleAnswerButtonClick (id, answeredButton) {
+  if (answeredButton.textContent === 'Answered') {
+    // do stuff
+    answeredButton.textContent = 'Cancel'
+    answeredButton.className = 'btn item-button btn-warning btn-sm my-2'
+
+    const li = answeredButton.closest('LI')
+    const form = document.createElement('FORM')
+    form.id = `${id}-form`
+    form.className = 'form-group d-flex row my-2'
+    form.innerHTML = templates.form(id)
+    li.appendChild(form)
+    document.getElementById(`archive-${id}`).addEventListener('click', e => {
+      displayHelperForm(id)
+    })
+  } else {
+    answeredButton.textContent = 'Answered'
+    answeredButton.className = 'btn item-button btn-success btn-sm my-2'
+    document.getElementById(`${id}-form`).remove()
+  }
+}
+
+function displayHelperForm (id) {
+  const helperForm = document.getElementById(`helper-${id}`)
+  const solutionForm = document.getElementById(`answer-${id}`)
+  if ((solutionForm.value !== '') && (helperForm.value !== '')) {
+    markAsResolved(id, solutionForm.value, helperForm.value)
+  } else if (solutionForm.value === '') {
+    window.alert('Please let us know what the solution was.')
+  } else if (helperForm.value === '') {
+    window.alert('Please let us know who helped you.')
+  }
 }
 
 function createNewListItem (id, index, name, question) {
@@ -162,13 +174,17 @@ function displayArchivedQuestions () {
       return (a < b)
     })
     messageIds.forEach((id, index) => {
-      const item = result[id]
-      const newItem = createNewArchiveListItem(id, index + 1, item.name, item.question)
-      archive.appendChild(newItem)
-      const detailsButton = document.getElementById(`${id}-details`)
-      detailsButton.addEventListener('click', () => { displayDetails(id, detailsButton) })
+      displayMessage(archive, result, id, index)
     })
   })
+}
+
+function displayMessage (archive, result, id, index) {
+  const item = result[id]
+  const newItem = createNewArchiveListItem(id, index + 1, item.name, item.question)
+  archive.appendChild(newItem)
+  const detailsButton = document.getElementById(`${id}-details`)
+  detailsButton.addEventListener('click', () => { displayDetails(id, detailsButton) })
 }
 
 function displayDetails (id, detailsButton) {
@@ -192,6 +208,8 @@ function detect () {
     window.location.href = 'askify.html'
   }
 }
+
+/// ////////
 
 if (window.route === 'index') {
   // do login page stuff
